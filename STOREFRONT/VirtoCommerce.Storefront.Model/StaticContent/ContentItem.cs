@@ -107,8 +107,18 @@ namespace VirtoCommerce.Storefront.Model.StaticContent
                             this.PublicationStatus = EnumUtility.SafeParse<ContentPublicationStatus>(settingValue, ContentPublicationStatus.Draft);
                             break;
 
+                        case "date":
+                            var createdDate = new DateTime();
+                            if (settingValue != null)
+                            {
+                                DateTime.TryParse(settingValue, out createdDate);
+                            }
+                            CreatedDate = createdDate;
+                            PublishedDate = createdDate;
+                            break;
+
                         case "tags":
-                            this.Tags = setting.Value.ToList();
+                            Tags = setting.Value.ToList();
                             break;
 
                         case "categories":

@@ -24,9 +24,12 @@ namespace VirtoCommerce.LiquidThemeEngine.Converters
                 retVal.Articles = new MutablePagedList<Article>((pageNumber, pageSize) =>
                 {
                     var articlesForLanguage = blog.Articles.Where(x => x.Language == language || x.Language.IsInvariant).GroupBy(x => x.Name).Select(x => x.OrderByDescending(y => y.Language).FirstOrDefault());
-                    return new PagedList<Article>(articlesForLanguage.Select(x => x.ToShopifyModel()), pageNumber, pageSize);
+                    return new PagedList<Article>(articlesForLanguage.Select(x => x.ToShopifyModel()).OrderByDescending(x => x.CreatedAt), pageNumber, pageSize);
                 }, blog.Articles.PageNumber, blog.Articles.PageSize);
             }
+
+            retVal.Handle = blog.Name.Replace(" ", "-").ToLower();
+
             return retVal;
         }
     }

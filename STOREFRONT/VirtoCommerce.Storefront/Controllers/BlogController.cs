@@ -47,6 +47,13 @@ namespace VirtoCommerce.Storefront.Controllers
              if (blogArticle != null)
             {
                 context.CurrentBlogArticle = blogArticle;
+                context.CurrentPageSeo = new SeoInfo
+                {
+                    Language = blogArticle.Language,
+                    MetaDescription = blogArticle.Excerpt,
+                    Title = blogArticle.Title,
+                    Slug = blogArticle.Permalink
+                };
                 return View("article", base.WorkContext);
             }
 

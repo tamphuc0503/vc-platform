@@ -30,8 +30,17 @@ namespace VirtoCommerce.Storefront.Model.StaticContent
                 Excerpt = parts[0];
                 content.Replace(_excerpToken, String.Empty);
             }
+
+            if (metaInfoMap.ContainsKey("main-image"))
+            {
+                ImageUrl = metaInfoMap["main-image"].FirstOrDefault();
+            }
+            if (metaInfoMap.ContainsKey("excerpt"))
+            {
+                Excerpt = metaInfoMap["excerpt"].FirstOrDefault();
+            }
+
             base.LoadContent(content, metaInfoMap, themeSettings);
-            //TODO: load image from meta info            
         }
     }
 }
