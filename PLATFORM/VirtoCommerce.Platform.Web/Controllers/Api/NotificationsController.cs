@@ -1,17 +1,12 @@
-﻿using DotLiquid;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
 using System.Net;
-using System.Web;
 using System.Web.Http;
 using System.Web.Http.Description;
+using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Notifications;
 using VirtoCommerce.Platform.Web.Converters.Notifications;
-using VirtoCommerce.Platform.Core.Common;
 using webModels = VirtoCommerce.Platform.Web.Model.Notifications;
 
 namespace VirtoCommerce.Platform.Web.Controllers.Api
@@ -46,6 +41,18 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
             return Ok(notifications.Select(s => s.ToWebModel()).ToArray());
         }
 
+        [HttpGet]
+        [ResponseType(typeof(webModels.NotificationTemplate))]
+        [Route("template/{id}")]
+        public IHttpActionResult GetNotificationTemplateById(string id)
+        {
+            var retVal = _notificationTemplateService.GetById(id);
+           if(retVal != null)
+            {
+                return Ok(retVal);
+            }
+            return NotFound();
+        }
 
         /// <summary>
         /// Get notification template
@@ -60,8 +67,8 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         /// </remarks>
         [HttpGet]
         [ResponseType(typeof(webModels.NotificationTemplate))]
-        [Route("template/{type}/{objectId}/{objectTypeId}/{language}")]
-        public IHttpActionResult GetNotificationTemplate(string type, string objectId, string objectTypeId, string language)
+        [Route("template")]
+        public IHttpActionResult GetNotificationTemplate(string type, string objectId = null, string objectTypeId = null, string language = null)
         {
             NotificationTemplate retVal = new NotificationTemplate();
             var notification = _notificationManager.GetNewNotification(type, objectId, objectTypeId, language);
@@ -85,8 +92,8 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         /// <param name="objectTypeId">Object type id of template</param>
         [HttpGet]
         [ResponseType(typeof(webModels.NotificationTemplate[]))]
-        [Route("template/{type}/{objectId}/{objectTypeId}")]
-        public IHttpActionResult GetNotificationTemplates(string type, string objectId, string objectTypeId)
+        [Route("templates")]
+        public IHttpActionResult GetNotificationTemplates(string type, string objectId = null, string objectTypeId = null)
         {
             List<webModels.NotificationTemplate> retVal = new List<webModels.NotificationTemplate>();
             var templates = _notificationTemplateService.GetNotificationTemplatesByNotification(type, objectId, objectTypeId);
@@ -132,7 +139,7 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         /// <remarks>Method returns notification properties, that defined in notification class, this properties used in notification template.</remarks>
         /// <param name="type">Notification type</param>
         [HttpGet]
-        [ResponseType(typeof(NotificationParameter[]))]
+        [ResponseType(typeof(webModels.NotificationParameter[]))]
         [Route("template/{type}/getTestingParameters")]
         public IHttpActionResult GetTestingParameters(string type)
         {
