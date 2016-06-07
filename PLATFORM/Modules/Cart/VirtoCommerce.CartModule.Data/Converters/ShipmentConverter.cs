@@ -85,9 +85,9 @@ namespace VirtoCommerce.CartModule.Data.Converters
                                                                     x => x.TaxIncluded, x => x.Currency,
                                                                     x => x.WeightUnit, x => x.WeightValue,
                                                                     x => x.DimensionHeight, x => x.DimensionLength, x => x.DimensionUnit,
-                                                                    x => x.DimensionWidth, x => x.TaxType);
+                                                                    x => x.DimensionWidth, x => x.TaxType, x => x.ShipmentMethodOption);
 			target.InjectFrom(patchInjection, source);
-
+            target.ShipmentMethodOption = source.ShipmentMethodOption;
 		
 			if (!source.Addresses.IsNullCollection())
 			{

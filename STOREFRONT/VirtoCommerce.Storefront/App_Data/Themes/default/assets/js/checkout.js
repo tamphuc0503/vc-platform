@@ -94,8 +94,10 @@ storefrontApp.controller('checkoutController', ['$rootScope', '$scope', '$window
         }
     }
 
-    $scope.setShippingMethod = function ()
-    {
+    $scope.setShippingMethod = function () {
+        var shipmentCodeParts = $scope.checkout.shipment.extendedCode.split(':');
+        $scope.checkout.shipment.shipmentMethodCode = shipmentCodeParts[0];
+        $scope.checkout.shipment.shipmentMethodOption = shipmentCodeParts.length > 1 ? shipmentCodeParts[1] : null;
         setShippingMethod($scope.checkout.shipment);
     }
 
@@ -233,6 +235,9 @@ storefrontApp.controller('checkoutController', ['$rootScope', '$scope', '$window
             }
             updateTotals(cart);
             var shipment = cart.shipments.length ? cart.shipments[0] : newShipment;
+            if (shipment.shipmentMethodCode) {
+                shipment.extendedCode = buildShipmentExtendedCode(shipment.shipmentMethodCode, shipment.shipmentMethodOption);
+            }
             shipment.deliveryAddress = addressIsValid(shipment.deliveryAddress) ? shipment.deliveryAddress : cart.defaultShippingAddress;
             var payment = cart.payments.length ? cart.payments[0] : newPayment;
             payment.billingAddress = addressIsValid(payment.billingAddress) ? payment.billingAddress : cart.defaultBillingAddress;
@@ -326,14 +331,31 @@ storefrontApp.controller('checkoutController', ['$rootScope', '$scope', '$window
 
     function getAvailableShippingMethods(shipmentId) {
         cartService.getAvailableShippingMethods(shipmentId).then(function (response) {
-            var availableShippingMethods = response.data;
+            var availableShippingMethods = _.groupBy(response.data, function (sm) { return sm.shipmentMethodCode });
+            _.each(availableShippingMethods, function (availableShippingMethod) {
+                _.each(availableShippingMethod, function (availableShippingRate) {
+                    availableShippingRate.id = buildShipmentExtendedCode(availableShippingRate.shipmentMethodCode, availableShippingRate.optionName);
+                });
+            });
             $scope.checkout.availableShippingMethods = availableShippingMethods;
             if ($scope.checkout.shipment && !$scope.checkout.shipment.shipmentMethodCode &&
-                addressIsValid($scope.checkout.shipment.deliveryAddress) && availableShippingMethods.length == 1) {
-                $scope.checkout.shipment.shipmentMethodCode = availableShippingMethods[0].shipmentMethodCode;
+                addressIsValid($scope.checkout.shipment.deliveryAddress) && $scope.getObjectSize(availableShippingMethods) == 1) {
+                _.each(availableShippingMethods, function (availableShippingMethod) {
+                    $scope.checkout.shipment.shipmentMethodCode = availableShippingMethod[0].shipmentMethodCode;
+                    $scope.checkout.shipment.shipmentMethodOption = availableShippingMethod[0].optionName;
+                    $scope.checkout.shipment.extendedCode = buildShipmentExtendedCode(availableShippingMethod[0].shipmentMethodCode, availableShippingMethod[0].optionName);
+                });
                 setShippingMethod();
             }
         });
+    }
+
+    function buildShipmentExtendedCode(shipmentMethodCode, shipmentOptionName) {
+        var extendedCode = shipmentMethodCode;
+        if (shipmentOptionName) {
+            extendedCode += ':' + shipmentOptionName;
+        }
+        return extendedCode;
     }
 
     function getAvailablePaymentMethods() {

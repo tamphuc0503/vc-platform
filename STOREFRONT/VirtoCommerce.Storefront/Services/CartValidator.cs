@@ -100,7 +100,7 @@ namespace VirtoCommerce.Storefront.Services
                 }
                 if (!string.IsNullOrEmpty(shipment.ShipmentMethodCode))
                 {
-                    var existingShippingMethod = availableShippingMethods.FirstOrDefault(sm => sm.ShipmentMethodCode == shipment.ShipmentMethodCode);
+                    var existingShippingMethod = availableShippingMethods.Select(sm => sm.ToWebModel(cart.Currency)).FirstOrDefault(sm => sm.IsUsingByCartShipment(shipment));
                     if (existingShippingMethod == null)
                     {
                         shipment.ValidationWarnings.Add(new ShippingUnavailableError());
@@ -108,14 +108,13 @@ namespace VirtoCommerce.Storefront.Services
                     }
                     if (existingShippingMethod != null)
                     {
-                        var shippingMethod = existingShippingMethod.ToWebModel(cart.Currency);
-                        if (shippingMethod.Price != shipment.ShippingPrice &&
+                        if (existingShippingMethod.Price != shipment.ShippingPrice &&
                             (cart.ValidationType == ValidationType.PriceAndQuantity || cart.ValidationType == ValidationType.Price))
                         {
                             shipment.ValidationWarnings.Add(new ShippingPriceError(shipment.ShippingPrice));
 
                             cart.Shipments.Clear();
-                            cart.Shipments.Add(shippingMethod.ToShipmentModel(cart.Currency));
+                            cart.Shipments.Add(existingShippingMethod.ToShipmentModel(cart.Currency));
                         }
                     }
                 }
