@@ -30,7 +30,7 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         public IHttpActionResult GetAllSettings()
         {
             var modules = _settingsManager.GetModules();
-            return Ok(modules.SelectMany(x => _settingsManager.GetModuleSettings(x.Id)).Select(x => x.ToWebModel()).ToArray());
+            return Ok(modules.SelectMany(x => _settingsManager.GetModuleSettings(x.Id)).Where(x => !x.IsRuntime).Select(x => x.ToWebModel()).ToArray());
         }
 
         /// <summary>
@@ -52,8 +52,6 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         /// </summary>
         /// <param name="name">Setting system name.</param>
         /// <returns></returns>
-        /// <response code="200"></response>
-        /// <response code="404">Setting not found.</response>
         [HttpGet]
         [Route("{name}")]
         [ResponseType(typeof(webModel.Setting))]
@@ -64,7 +62,7 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
             {
                 return Ok(retVal.ToWebModel());
             }
-            return StatusCode(HttpStatusCode.NoContent);
+            return NotFound();
         }
 
         /// <summary>
@@ -82,8 +80,8 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
                 _settingsManager.SaveSettings(settings.Select(x => x.ToModuleModel()).ToArray());
             }
             return StatusCode(HttpStatusCode.NoContent);
-        }        
-       
+        }
+
         /// <summary>
         /// Get array setting values by name
         /// </summary>
@@ -97,6 +95,24 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         {
             var value = _settingsManager.GetArray<object>(name, null);
             return Ok(value);
+        }
+        
+        /// <summary>
+        /// Get UI customization setting
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [AllowAnonymous]
+        [Route("ui/customization")]
+        [ResponseType(typeof(webModel.Setting))]
+        public IHttpActionResult GetUICustomizationSetting()
+        {
+            var retVal = _settingsManager.GetSettingByName("VirtoCommerce.Platform.UI.Customization");
+            if (retVal != null)
+            {
+                return Ok(retVal.ToWebModel());
+            }
+            return NotFound();
         }
     }
 }

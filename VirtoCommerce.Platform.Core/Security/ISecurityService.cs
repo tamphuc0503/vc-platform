@@ -12,6 +12,7 @@ namespace VirtoCommerce.Platform.Core.Security
         Task<SecurityResult> UpdateAsync(ApplicationUserExtended user);
         Task DeleteAsync(string[] names);
         ApiAccount GenerateNewApiAccount(ApiAccountType type);
+        ApiAccount GenerateNewApiKey(ApiAccount account);
         Task<string> GeneratePasswordResetTokenAsync(string userId);
         Task<SecurityResult> ChangePasswordAsync(string name, string oldPassword, string newPassword);
         Task<SecurityResult> ResetPasswordAsync(string name, string newPassword);
@@ -20,6 +21,7 @@ namespace VirtoCommerce.Platform.Core.Security
         bool UserHasAnyPermission(string userName, string[] scopes, params string[] permissionIds);
         Permission[] GetAllPermissions();
         Permission[] GetUserPermissions(string userName);
-
+        Task<bool> IsUserLockedAsync(string userId);
+        Task<SecurityResult> UnlockUserAsync(string userId);
     }
 }

@@ -9,8 +9,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>VirtoCommerce.Platform.Data</RootNamespace>
     <AssemblyName>VirtoCommerce.Platform.Data</AssemblyName>
-    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -21,7 +22,6 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -31,33 +31,31 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="CacheManager.Core, Version=0.8.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\CacheManager.Core.0.8.0\lib\net45\CacheManager.Core.dll</HintPath>
-      <Private>True</Private>
     </Reference>
-    <Reference Include="Common.Logging, Version=3.1.0.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
-      <HintPath>..\packages\Common.Logging.3.1.0\lib\net40\Common.Logging.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Common.Logging, Version=3.3.1.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
+      <HintPath>..\packages\Common.Logging.3.3.1\lib\net40\Common.Logging.dll</HintPath>
     </Reference>
-    <Reference Include="Common.Logging.Core, Version=3.1.0.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
-      <HintPath>..\packages\Common.Logging.Core.3.1.0\lib\net40\Common.Logging.Core.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Common.Logging.Core, Version=3.3.1.0, Culture=neutral, PublicKeyToken=af08829b84f0328e, processorArchitecture=MSIL">
+      <HintPath>..\packages\Common.Logging.Core.3.3.1\lib\net40\Common.Logging.Core.dll</HintPath>
     </Reference>
-    <Reference Include="EntityFramework">
-      <HintPath>..\packages\EntityFramework.6.1.1\lib\net45\EntityFramework.dll</HintPath>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.2.0\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
-    <Reference Include="EntityFramework.SqlServer">
-      <HintPath>..\packages\EntityFramework.6.1.1\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.2.0\lib\net45\EntityFramework.SqlServer.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="Omu.ValueInjecter">
+    <Reference Include="Omu.ValueInjecter, Version=2.3.3.0, Culture=neutral, PublicKeyToken=c7694541b0ac80e4, processorArchitecture=MSIL">
       <HintPath>..\packages\valueinjecter.2.3.3\lib\net35\Omu.ValueInjecter.dll</HintPath>
+    </Reference>
+    <Reference Include="StackExchange.Redis, Version=1.2.6.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\StackExchange.Redis.1.2.6\lib\net46\StackExchange.Redis.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -81,6 +79,7 @@
     <Compile Include="Assets\FileSystemBlobProvider.cs" />
     <Compile Include="ChangeLog\ChangeLogConverter.cs" />
     <Compile Include="ChangeLog\ChangeLogService.cs" />
+    <Compile Include="Common\AssemblyExtensions.cs" />
     <Compile Include="Common\CacheManagerExtensions.cs" />
     <Compile Include="Common\ConventionInjections\CloneInjection.cs" />
     <Compile Include="Common\ConventionInjections\IgnorePropertiesInjection.cs" />
@@ -122,6 +121,7 @@
     <Compile Include="Model\DynamicPropertyDictionaryItemNameEntity.cs" />
     <Compile Include="Model\DynamicPropertyNameEntity.cs" />
     <Compile Include="Model\DynamicPropertyObjectValueEntity.cs" />
+    <Compile Include="Model\AssetEntryEntity.cs" />
     <Compile Include="Model\NotificationEntity.cs" />
     <Compile Include="Model\NotificationTemplateEntity.cs" />
     <Compile Include="Model\OperationLogEntity.cs" />
@@ -140,6 +140,8 @@
     <Compile Include="Notifications\NotificationManager.cs" />
     <Compile Include="Notifications\NotificationTemplateServiceImpl.cs" />
     <Compile Include="Notifications\RegistrationSmsNotification.cs" />
+    <Compile Include="Notifications\TwoFactorEmailNotification.cs" />
+    <Compile Include="Notifications\TwoFactorSmsNotification.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repositories\IPlatformRepository.cs" />
     <Compile Include="Repositories\Migrations\201504300700222_Initial.cs" />
@@ -218,13 +220,34 @@
     <Compile Include="Repositories\Migrations\201607111016388_AddSenderAndRecipient.Designer.cs">
       <DependentUpon>201607111016388_AddSenderAndRecipient.cs</DependentUpon>
     </Compile>
+    <Compile Include="Repositories\Migrations\201610251133362_DynamicPropertyAddDescription.cs" />
+    <Compile Include="Repositories\Migrations\201610251133362_DynamicPropertyAddDescription.Designer.cs">
+      <DependentUpon>201610251133362_DynamicPropertyAddDescription.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Repositories\Migrations\201707140957043_DynamicPropertyAddDisplayOrder.cs" />
+    <Compile Include="Repositories\Migrations\201707140957043_DynamicPropertyAddDisplayOrder.Designer.cs">
+      <DependentUpon>201707140957043_DynamicPropertyAddDisplayOrder.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Repositories\Migrations\201710311021135_NewIndexes2.cs" />
+    <Compile Include="Repositories\Migrations\201710311021135_NewIndexes2.Designer.cs">
+      <DependentUpon>201710311021135_NewIndexes2.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Repositories\Migrations\201803191347409_AssetEntry.cs" />
+    <Compile Include="Repositories\Migrations\201803191347409_AssetEntry.Designer.cs">
+      <DependentUpon>201803191347409_AssetEntry.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Repositories\Migrations\201805211114196_UpDecimalPrecisionToFive.cs" />
+    <Compile Include="Repositories\Migrations\201805211114196_UpDecimalPrecisionToFive.Designer.cs">
+      <DependentUpon>201805211114196_UpDecimalPrecisionToFive.cs</DependentUpon>
+    </Compile>
     <Compile Include="Repositories\Migrations\Configuration.cs" />
     <Compile Include="Repositories\PlatformDatabaseInitializer.cs" />
     <Compile Include="Repositories\PlatformRepository.cs" />
-    <Compile Include="Settings\Converters\ModuleConverter.cs" />
-    <Compile Include="Settings\Converters\SettingConverter.cs" />
-    <Compile Include="Settings\Converters\SettingValueConverter.cs" />
+    <Compile Include="Infrastructure\RepositoryExtensions.cs" />
     <Compile Include="Settings\SettingManager.cs" />
+    <Compile Include="Settings\SettingConstants.cs" />
+    <Compile Include="Settings\SettingExtensions.cs" />
+    <Compile Include="Assets\AssetEntryService.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\VirtoCommerce.Platform.Core\VirtoCommerce.Platform.Core.csproj">
@@ -236,9 +259,7 @@
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
-    <None Include="packages.config">
-      <SubType>Designer</SubType>
-    </None>
+    <None Include="packages.config" />
     <None Include="VirtoCommerce.Platform.Data.nuspec">
       <SubType>Designer</SubType>
     </None>
@@ -300,6 +321,21 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Repositories\Migrations\201607111016388_AddSenderAndRecipient.resx">
       <DependentUpon>201607111016388_AddSenderAndRecipient.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Repositories\Migrations\201610251133362_DynamicPropertyAddDescription.resx">
+      <DependentUpon>201610251133362_DynamicPropertyAddDescription.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Repositories\Migrations\201707140957043_DynamicPropertyAddDisplayOrder.resx">
+      <DependentUpon>201707140957043_DynamicPropertyAddDisplayOrder.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Repositories\Migrations\201710311021135_NewIndexes2.resx">
+      <DependentUpon>201710311021135_NewIndexes2.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Repositories\Migrations\201803191347409_AssetEntry.resx">
+      <DependentUpon>201803191347409_AssetEntry.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Repositories\Migrations\201805211114196_UpDecimalPrecisionToFive.resx">
+      <DependentUpon>201805211114196_UpDecimalPrecisionToFive.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

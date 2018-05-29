@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Modularity;
-using VirtoCommerce.Platform.Core.Properties;
+using VirtoCommerce.Platform.Core.Modularity.Exceptions;
+using VirtoCommerce.Platform.Web.Resources;
 
 namespace VirtoCommerce.Platform.Web.Modularity
 {
@@ -37,7 +39,9 @@ namespace VirtoCommerce.Platform.Web.Modularity
                 throw new InvalidOperationException("The ContentPhysicalPath cannot contain a null value or be empty");
 
             if (!Directory.Exists(_assembliesPath))
+            {
                 Directory.CreateDirectory(_assembliesPath);
+            }
 
             if (!contentPhysicalPath.EndsWith("\\", StringComparison.OrdinalIgnoreCase))
                 contentPhysicalPath += "\\";
@@ -52,6 +56,7 @@ namespace VirtoCommerce.Platform.Web.Modularity
                 var manifestPath = pair.Key;
 
                 var modulePath = Path.GetDirectoryName(manifestPath);
+
                 CopyAssemblies(modulePath, _assembliesPath);
 
                 var moduleVirtualPath = GetModuleVirtualPath(rootUri, modulePath);
@@ -70,6 +75,85 @@ namespace VirtoCommerce.Platform.Web.Modularity
                 AddModule(moduleInfo);
             }
         }
+
+        public override IEnumerable<ModuleInfo> CompleteListWithDependencies(IEnumerable<ModuleInfo> modules)
+        {
+            IEnumerable<ModuleInfo> result;
+
+            try
+            {
+                var passedModules = modules as ModuleInfo[] ?? modules.ToArray();
+                result = base.CompleteListWithDependencies(passedModules).ToArray();
+            }
+            catch (MissedModuleException)
+            {
+                // Do not throw if module was missing
+                // Use ValidateDependencyGraph to validate & write and error of module missing
+                result = Enumerable.Empty<ModuleInfo>();
+            }
+
+            return result;
+        }
+
+        protected override void ValidateDependencyGraph()
+        {
+            var modules = Modules.OfType<ManifestModuleInfo>();
+            var manifestModules = modules as ManifestModuleInfo[] ?? modules.ToArray();
+            try
+            {
+                base.ValidateDependencyGraph();
+            }
+            catch (MissedModuleException exception)
+            {
+                foreach (var module in manifestModules)
+                {
+                    if (exception.MissedDependenciesMatrix.Keys.Contains(module.ModuleName))
+                    {
+                        module.Errors.Add(string.Format(ModularityResources.DependencyOnMissingModule, string.Join(", ", exception.MissedDependenciesMatrix[module.ModuleName])));
+                    }
+                }
+            }
+        }
+
+        public override void Validate()
+        {
+            var modules = Modules.OfType<ManifestModuleInfo>();
+            var manifestModules = modules as ManifestModuleInfo[] ?? modules.ToArray();
+
+            base.Validate();
+
+            //Dependencies and platform version validation
+            foreach (var module in manifestModules)
+            {
+                //Check platform version
+                if (!module.PlatformVersion.IsCompatibleWith(PlatformVersion.CurrentVersion))
+                {
+                    module.Errors.Add(string.Format(ModularityResources.PlatformVersionIsIncompatible, module.PlatformVersion, PlatformVersion.CurrentVersion));
+                }
+
+                //Check that incompatible modules does not installed
+                if (!module.Incompatibilities.IsNullOrEmpty())
+                {
+                    var installedIncompatibilities = manifestModules.Select(x => x.Identity).Join(module.Incompatibilities, x => x.Id, y => y.Id, (x, y) => new { x, y })
+                                                            .Where(g => g.y.Version.IsCompatibleWith(g.x.Version)).Select(g => g.x)
+                                                            .ToArray();
+                    if (installedIncompatibilities.Any())
+                    {
+                        module.Errors.Add(string.Format(ModularityResources.ModuleIsIncompatible, module, string.Join(", ", installedIncompatibilities.Select(x => x.ToString()))));
+                    }
+                }
+
+                foreach (var declaredDependency in module.Dependencies)
+                {
+                    var installedDependency = manifestModules.FirstOrDefault(x => x.Id.EqualsInvariant(declaredDependency.Id));
+                    if (installedDependency != null && !declaredDependency.Version.IsCompatibleWithBySemVer(installedDependency.Version))
+                    {
+                        module.Errors.Add(string.Format(ModularityResources.ModuleDependencyIsIncompatible, declaredDependency, installedDependency.Version));
+                    }
+                }
+            }
+        }
+
 
         private IDictionary<string, ModuleManifest> GetModuleManifests()
         {
@@ -154,7 +238,7 @@ namespace VirtoCommerce.Platform.Web.Modularity
             return relativePath;
         }
 
-        private void ConvertVirtualPath(IEnumerable<ManifestBundleItem> items, string moduleVirtualPath)
+        private static void ConvertVirtualPath(IEnumerable<ManifestBundleItem> items, string moduleVirtualPath)
         {
             if (items != null)
             {

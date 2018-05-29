@@ -1,6 +1,8 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using VirtoCommerce.Platform.Core.Common;
+using VirtoCommerce.Platform.Core.Settings;
 
 namespace VirtoCommerce.Platform.Data.Model
 {
@@ -13,6 +15,7 @@ namespace VirtoCommerce.Platform.Data.Model
         public const string TypeBoolean = "Boolean";
         public const string TypeDateTime = "DateTime";
         public const string TypeSecureString = "SecureString";
+        public const string TypeJson = "Json";
 
         [Required]
         [StringLength(64)]
@@ -36,6 +39,46 @@ namespace VirtoCommerce.Platform.Data.Model
         public virtual SettingEntity Setting { get; set; }
 
 
+        public virtual SettingValueEntity FromString(string value, SettingValueType valueType)
+        {
+            this.ValueType = valueType.ToString();
+
+            if (valueType == SettingValueType.Boolean)
+            {
+                this.BooleanValue = Convert.ToBoolean(value);
+            }
+            else if (valueType == SettingValueType.DateTime)
+            {
+                this.DateTimeValue = Convert.ToDateTime(value, CultureInfo.InvariantCulture);
+            }
+            else if (valueType == SettingValueType.Decimal)
+            {
+                this.DecimalValue = Convert.ToDecimal(value, CultureInfo.InvariantCulture);
+            }
+            else if (valueType == SettingValueType.Integer)
+            {
+                this.IntegerValue = Convert.ToInt32(value, CultureInfo.InvariantCulture);
+            }
+            else if (valueType == SettingValueType.LongText)
+            {
+                this.LongTextValue = value;
+            }
+            else if (valueType == SettingValueType.Json)
+            {
+                this.LongTextValue = value;
+            }
+            else if (valueType == SettingValueType.SecureString)
+            {
+                this.ShortTextValue = value;
+            }
+            else
+            {
+                this.ShortTextValue = value;
+            }
+            return this;
+        }
+
+
         public object RawValue()
         {
             switch (ValueType)
@@ -49,6 +92,7 @@ namespace VirtoCommerce.Platform.Data.Model
                 case TypeInteger:
                     return IntegerValue;
                 case TypeLongText:
+                case TypeJson:
                     return LongTextValue;
                 case TypeShortText:
                 case TypeSecureString:
@@ -71,6 +115,7 @@ namespace VirtoCommerce.Platform.Data.Model
                 case TypeInteger:
                     return IntegerValue.ToString(formatProvider);
                 case TypeLongText:
+                case TypeJson:
                     return LongTextValue;
                 case TypeShortText:
                 case TypeSecureString:

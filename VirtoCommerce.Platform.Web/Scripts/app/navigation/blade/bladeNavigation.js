@@ -1,4 +1,4 @@
-angular.module('platformWebApp')
+﻿angular.module('platformWebApp')
 .factory('platformWebApp.toolbarService', function () {
     var toolbarCommandsMap = [];
     return {
@@ -19,7 +19,13 @@ angular.module('platformWebApp')
                 bladeCommands = angular.copy(bladeCommands || []);
 
                 _.each(externalCommands, function (newCommand) {
-                    bladeCommands.splice(newCommand.index, 0, newCommand);
+                    var overrideIndex = _.findIndex(bladeCommands, function (bladeCommand) {
+                        return bladeCommand.name === newCommand.name;
+                    });
+                    var deleteCount = overrideIndex >= 0 ? 1 : 0;
+                    overrideIndex = overrideIndex >= 0 ? overrideIndex : newCommand.index;
+
+                    bladeCommands.splice(overrideIndex, deleteCount, newCommand);
                 });
             }
 
@@ -27,7 +33,7 @@ angular.module('platformWebApp')
         }
     };
 })
-.directive('vaBladeContainer', ['$compile', 'platformWebApp.bladeNavigationService', function ($compile, bladeNavigationService) {
+.directive('vaBladeContainer', ['platformWebApp.bladeNavigationService', function (bladeNavigationService) {
     return {
         restrict: 'E',
         replace: true,
@@ -37,7 +43,7 @@ angular.module('platformWebApp')
         }
     }
 }])
-.directive('vaBlade', ['$compile', 'platformWebApp.bladeNavigationService', 'platformWebApp.toolbarService', '$timeout', '$document', function ($compile, bladeNavigationService, toolbarService, $timeout, $document) {
+.directive('vaBlade', ['$compile', 'platformWebApp.bladeNavigationService', 'platformWebApp.toolbarService', '$timeout', '$document', 'platformWebApp.dialogService', function ($compile, bladeNavigationService, toolbarService, $timeout, $document, dialogService) {
     return {
         terminal: true,
         priority: 100,
@@ -47,68 +53,103 @@ angular.module('platformWebApp')
             element.attr('ng-model', "blade");
             element.removeAttr("va-blade");
             $compile(element)(scope);
+            scope.blade.$scope = scope;
 
             var mainContent = $('.cnt');
-            var blade = $('.blade:last', mainContent);
-            var offset = parseInt(blade.offset().left);
-
-            $timeout(function () {
-                offset = parseInt(blade.width())
-            }, 50, false);
+            var currentBlade = $(element).parent();
+            var parentBlade = currentBlade.prev();
 
             if (!scope.blade.disableOpenAnimation) {
-                blade.css('margin-left', '-' + blade.width() + 'px').addClass('__animate');
-
-                setTimeout(function () {
-                    blade.animate({ 'margin-left': 0 }, 250, function () {
-                        blade.removeAttr('style').removeClass('__animate');
-                    });
-                }, 0);
+                scope.blade.animated = true;
+                $timeout(function () {
+                    scope.blade.animated = false;
+                }, 250);
             }
 
-            $timeout(function () {
-                if (offset > mainContent.scrollLeft()) {
-                    mainContent.animate({ scrollLeft: offset + 'px' }, 500);
+            function scrollContent(scrollToBlade, scrollToElement) {
+                if (!scrollToBlade) {
+                    scrollToBlade = scope.blade;
                 }
-            }, 0, false);
+                if (!scrollToElement) {
+                    scrollToElement = currentBlade;
+                }
+
+                // we can't just get current blade position (because of animation) or calculate it
+                // via parent position + parent width (because we may open parent and child blade at the same time)
+                // instead, we need to use sum of width of all blades
+                var previousBlades = scrollToElement.prevAll();
+                var previousBladesWidthSum = 0;
+                previousBlades.each(function () {
+                    previousBladesWidthSum += $(this).outerWidth();
+                });
+                var scrollLeft = previousBladesWidthSum + scrollToElement.outerWidth(!(scrollToBlade.isExpanded || scrollToBlade.isMaximized)) - mainContent.width();
+                mainContent.animate({ scrollLeft: (scrollLeft > 0 ? scrollLeft : 0) }, 500);
+            }
+
+            var updateSize = function () {
+                var contentBlock = currentBlade.find(".blade-content");
+                var containerBlock = currentBlade.find(".blade-container");
+
+                var bladeWidth = "";
+                var bladeMinWidth = "";
+
+                if ((scope.blade.isExpandable && scope.blade.isExpanded) || (!scope.blade.isExpandable && scope.blade.isMaximized)) {
+                    // minimal required width + container padding
+                    bladeMinWidth = 'calc(' + contentBlock.css("min-width") + ' + ' + parseInt(containerBlock.outerWidth() - containerBlock.width()) + 'px)';
+                }
+
+                if (scope.blade.isExpandable && scope.blade.isExpanded) {
+                    var offset = parentBlade.length > 0 ? parentBlade.width() : 0;
+                    // free space of view - parent blade size (if exist)
+                    bladeWidth = 'calc(100% - ' + offset + 'px)';
+                } else if (!scope.blade.isExpandable && scope.blade.isMaximized) {
+                    currentBlade.attr('data-width', currentBlade.outerWidth());
+                    bladeWidth = '100%';
+                }
+
+                currentBlade.width(bladeWidth);
+                currentBlade.css('min-width', bladeMinWidth);
+
+                setVisibleToolsLimit();
+            }
+
+            scope.$watch('blade.isExpanded', function () {
+                // we must recalculate position only at next digest cycle,
+                // because at this time blade UI is not fully (re)initialized
+                // for example, ng-class set classes after this watch called
+                $timeout(updateSize, 0, false);
+            });
+
+            scope.$on('$includeContentLoaded', function (event, src) {
+                if (src === scope.blade.template) {
+                    // see above
+                    $timeout(function () {
+                        updateSize();
+                        scrollContent();
+                    }, 0, false);
+                }
+            });
 
             scope.bladeMaximize = function () {
-                scope.maximized = true;
-
-                var blade = $(element);
-                blade.attr('data-width', blade.width());
-                var leftMenu = $('.nav-bar');
-                var offset = parseInt((blade.offset().left + $('.cnt').scrollLeft()) - leftMenu.width());
-                var contentblock = blade.find(".blade-content");
-                $(contentblock).animate({ width: (parseInt(window.innerWidth - leftMenu.width()) + 'px') }, 100);
-                $(contentblock).find('.inner-block').animate({ width: parseInt(window.innerWidth - leftMenu.width() - 40) + 'px' }, 100);
-                $('.cnt').animate({ scrollLeft: offset + 'px' }, 250);
-
-                setVisibleToolsLimit();
+                scope.blade.isMaximized = true;
+                updateSize();
+                scrollContent();
             };
 
-            scope.bladeRestore = function () {
-                scope.maximized = false;
-
-                var blade = $(element);
-                var blockWidth = blade.data('width');
-                var leftMenu = $('.nav-bar');
-                blade.removeAttr('data-width');
-                var offset = parseInt(blade.offset().left + $('.cnt').scrollLeft() - leftMenu.width());
-                var contentblock = blade.find(".blade-content");
-                $(contentblock).animate({ width: blockWidth }, 100);
-                $(contentblock).find('.inner-block').animate({ width: blockWidth - 40 }, 100);
-                $('.cnt').animate({ scrollLeft: offset + 'px' }, 250);
-
-                setVisibleToolsLimit();
+            scope.bladeMinimize = function () {
+                scope.blade.isMaximized = false;
+                updateSize();
             };
 
             scope.bladeClose = function (onAfterClose) {
                 bladeNavigationService.closeBlade(scope.blade, onAfterClose, function (callback) {
-                    blade.addClass('__animate').animate({ 'margin-left': '-' + blade.width() + 'px' }, 125, function () {
-                        blade.remove();
+                    scope.blade.animated = true;
+                    scope.blade.closing = true;
+                    $timeout(function () {
+                        currentBlade.remove();
+                        scrollContent(scope.blade.parentBlade, parentBlade);
                         callback();
-                    });
+                    }, 125, false);
                 });
             };
 
@@ -118,7 +159,7 @@ angular.module('platformWebApp')
                 setVisibleToolsLimit();
             }, true);
 
-            var toolbar = blade.find(".blade-toolbar .menu.__inline");
+            var toolbar = currentBlade.find(".blade-toolbar .menu.__inline");
 
             function setVisibleToolsLimit() {
                 scope.toolsPerLineCount = scope.resolvedToolbarCommands ? scope.resolvedToolbarCommands.length : 1;
@@ -150,8 +191,15 @@ angular.module('platformWebApp')
                 event.stopPropagation();
                 $document.bind('click', handleClickEvent);
             };
+
+            scope.showErrorDetails = function () {
+                var dialog = { id: "errorDetails" };
+                if (scope.blade.errorBody != undefined)
+                    dialog.message = scope.blade.errorBody;
+                dialogService.showDialog(dialog, '$(Platform)/Scripts/app/modularity/dialogs/errorDetails-dialog.tpl.html', 'platformWebApp.confirmDialogController');
+            };
         }
-    };
+    }
 }])
 .factory('platformWebApp.bladeNavigationService', ['platformWebApp.authService', '$timeout', '$state', 'platformWebApp.dialogService', function (authService, $timeout, $state, dialogService) {
 
@@ -215,7 +263,7 @@ angular.module('platformWebApp')
                         }
                     }
                     if (angular.isFunction(callback)) {
-                        $timeout(callback, 60);
+                        callback();
                     };
                 };
 
@@ -226,6 +274,13 @@ angular.module('platformWebApp')
                     doCloseBlade();
                 }
             });
+
+            if (blade.parentBlade && blade.parentBlade.isExpandable) {
+                blade.parentBlade.isExpanded = true;
+                if (angular.isFunction(blade.parentBlade.onExpand)) {
+                    blade.parentBlade.onExpand();
+                }
+            }
         },
         closeChildrenBlades: function (blade, callback) {
             if (blade && _.any(blade.childrenBlades)) {
@@ -263,6 +318,14 @@ angular.module('platformWebApp')
             return found;
         },
         showBlade: function (blade, parentBlade) {
+
+            //If it is first blade for state try to open saved blades
+            //var firstStateBlade = service.stateBlades($state.current.name)[0];
+            //if (angular.isDefined(firstStateBlade) && firstStateBlade.id == blade.id) {
+            //    service.currentBlade = firstStateBlade;
+            //    return;
+            //}
+            blade.errorBody = "";
             blade.isLoading = true;
             blade.parentBlade = parentBlade;
             blade.childrenBlades = [];
@@ -309,7 +372,23 @@ angular.module('platformWebApp')
                 service.closeBlade(existingBlade, showBlade);
             }
             else {
-                showBlade();
+                $timeout(function() {
+                    showBlade();
+                });
+            }
+
+            if (parentBlade && parentBlade.isExpandable && parentBlade.isExpanded) {
+                parentBlade.isExpanded = false;
+                if (angular.isFunction(parentBlade.onCollapse)) {
+                    parentBlade.onCollapse();
+                }
+            }
+
+            if (blade.isExpandable) {
+                blade.isExpanded = true;
+                if (angular.isFunction(blade.onExpand)) {
+                    blade.onExpand();
+                }
             }
 
             blade.hasUpdatePermission = function () {
@@ -317,10 +396,11 @@ angular.module('platformWebApp')
             };
         },
         checkPermission: authService.checkPermission,
-        setError: function (msg, blade) {
-            if (blade) {
+        setError: function (error, blade) {
+            if (blade && error) {
                 blade.isLoading = false;
-                blade.error = msg;
+                blade.error = error.status && error.statusText ? error.status + ': ' + error.statusText : error;
+                blade.errorBody = error.data ? error.data.exceptionMessage : blade.errorBody;
             }
         }
     };

@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -52,20 +51,20 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         [ResponseType(typeof(SampleDataInfo[]))]
         [AllowAnonymous]
         public IHttpActionResult DiscoverSampleData()
-        {           
+        {
             return Ok(InnerDiscoverSampleData().ToArray());
         }
 
         [HttpPost]
         [Route("sampledata/autoinstall")]
         [ResponseType(typeof(SampleDataImportPushNotification))]
-        [AllowAnonymous]
+        [CheckPermission(Permission = PredefinedPermissions.PlatformImport)]
         public IHttpActionResult TryToAutoInstallSampleData()
         {
-            var singleSampleData = InnerDiscoverSampleData().SingleOrDefault();
-            if(singleSampleData != null && !string.IsNullOrEmpty(singleSampleData.Url))
+            var sampleData = InnerDiscoverSampleData().FirstOrDefault(x => !x.Url.IsNullOrEmpty());
+            if (sampleData != null)
             {
-                return ImportSampleData(singleSampleData.Url);
+                return ImportSampleData(sampleData.Url);
             }
             return StatusCode(HttpStatusCode.NoContent);
         }
@@ -73,19 +72,19 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         [HttpPost]
         [Route("sampledata/import")]
         [ResponseType(typeof(SampleDataImportPushNotification))]
-        [AllowAnonymous]
+        [CheckPermission(Permission = PredefinedPermissions.PlatformImport)]
         public IHttpActionResult ImportSampleData([FromUri]string url = null)
         {
             lock (_lockObject)
             {
-                var sampleDataState = EnumUtility.SafeParse<SampleDataState>(_settingsManager.GetValue<string>(_sampledataStateSetting, SampleDataState.Undefined.ToString()), SampleDataState.Undefined);
+                var sampleDataState = EnumUtility.SafeParse(_settingsManager.GetValue(_sampledataStateSetting, SampleDataState.Undefined.ToString()), SampleDataState.Undefined);
                 if (sampleDataState == SampleDataState.Undefined)
                 {
                     //Sample data initialization
                     if (Uri.IsWellFormedUriString(url, UriKind.Absolute))
                     {
                         _settingsManager.SetValue(_sampledataStateSetting, SampleDataState.Processing);
-                        var pushNotification = new SampleDataImportPushNotification("System");
+                        var pushNotification = new SampleDataImportPushNotification(User.Identity.Name);
                         _pushNotifier.Upsert(pushNotification);
                         BackgroundJob.Enqueue(() => SampleDataImportBackground(new Uri(url), HostingEnvironment.MapPath(Startup.VirtualRoot + "/App_Data/Uploads/"), pushNotification));
 
@@ -126,7 +125,7 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
         {
             if (string.IsNullOrEmpty(fileUrl))
             {
-                throw new ArgumentNullException("fileUrl");
+                throw new ArgumentNullException(nameof(fileUrl));
             }
             var localPath = HostingEnvironment.MapPath(fileUrl);
             PlatformExportManifest retVal;
@@ -139,7 +138,7 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
 
         [HttpPost]
         [Route("export")]
-        [ResponseType(typeof(PushNotification))]
+        [ResponseType(typeof(PlatformExportPushNotification))]
         [CheckPermission(Permission = PredefinedPermissions.PlatformExport)]
         public IHttpActionResult ProcessExport(PlatformImportExportRequest exportRequest)
         {
@@ -157,7 +156,7 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
 
         [HttpPost]
         [Route("import")]
-        [ResponseType(typeof(PushNotification))]
+        [ResponseType(typeof(PlatformImportPushNotification))]
         [CheckPermission(Permission = PredefinedPermissions.PlatformImport)]
         public IHttpActionResult ProcessImport(PlatformImportExportRequest importRequest)
         {
@@ -173,11 +172,11 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
             return Ok(notification);
         }
 
-        private IEnumerable<SampleDataInfo> InnerDiscoverSampleData()
+        private static IEnumerable<SampleDataInfo> InnerDiscoverSampleData()
         {
             var retVal = new List<SampleDataInfo>();
 
-            var sampleDataUrl = ConfigurationManager.AppSettings.GetValue("VirtoCommerce:SampleDataUrl", string.Empty);
+            var sampleDataUrl = ConfigurationHelper.GetAppSettingsValue("VirtoCommerce:SampleDataUrl", string.Empty);
             if (!string.IsNullOrEmpty(sampleDataUrl))
             {
                 //Discovery mode
@@ -314,16 +313,24 @@ namespace VirtoCommerce.Platform.Web.Controllers.Api
 
             try
             {
-                using (var stream = new MemoryStream())
+                const string relativeUrl = "tmp/exported_data.zip";
+                var localTmpFolder = HostingEnvironment.MapPath("~/App_Data/Uploads/tmp");
+                var localTmpPath = Path.Combine(localTmpFolder, "exported_data.zip");
+                if (!Directory.Exists(localTmpFolder))
+                {
+                    Directory.CreateDirectory(localTmpFolder);
+                }
+                //Import first to local tmp folder because Azure blob storage doesn't support some special file access mode 
+                using (var stream = File.Open(localTmpPath, FileMode.OpenOrCreate))
                 {
                     var manifest = exportRequest.ToManifest();
                     _platformExportManager.Export(stream, manifest, progressCallback);
-                    stream.Seek(0, SeekOrigin.Begin);
-                    var relativeUrl = "tmp/exported_data.zip";
-                    using (var targetStream = _blobStorageProvider.OpenWrite(relativeUrl))
-                    {
-                        stream.CopyTo(targetStream);
-                    }
+                }
+                //Copy export data to blob provider for get public download url
+                using (var localStream = File.Open(localTmpPath, FileMode.Open))
+                using (var blobStream = _blobStorageProvider.OpenWrite(relativeUrl))
+                {
+                    localStream.CopyTo(blobStream);
                     //Get a download url
                     pushNotification.DownloadUrl = _blobUrlResolver.GetAbsoluteUrl(relativeUrl);
                 }

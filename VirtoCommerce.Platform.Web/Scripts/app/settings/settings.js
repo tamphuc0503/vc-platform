@@ -36,6 +36,11 @@
 
 .factory('platformWebApp.settings.helper', [function () {
     var retVal = {};
+
+    retVal.getSetting = function(settings, settingName) {
+        return _.findWhere(settings, { name: settingName });
+    };
+
     retVal.fixValues = function (settings) {
         // parse values as they all are strings
         var selectedSettings = _.where(settings, { valueType: 'Integer' });
@@ -81,3 +86,12 @@
 
     return retVal;
 }]);
+
+// dictionary Setting values management helper
+function DictionarySettingDetailBlade(settingName) {
+    this.id = 'dictionarySettingDetails';
+    this.currentEntityId = settingName;
+    this.isApiSave = true;
+    this.controller = 'platformWebApp.settingDictionaryController';
+    this.template = '$(Platform)/Scripts/app/settings/blades/setting-dictionary.tpl.html';
+}

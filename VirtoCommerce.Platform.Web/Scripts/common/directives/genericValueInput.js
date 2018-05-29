@@ -1,12 +1,12 @@
-﻿angular.module('platformWebApp')
-.directive('vaGenericValueInput', ['$compile', '$templateCache', '$http', 'platformWebApp.objCompareService', function ($compile, $templateCache, $http, objComparer) {
+angular.module('platformWebApp')
+.directive('vaGenericValueInput', ['$compile', '$templateCache', '$http', 'platformWebApp.objCompareService', 'platformWebApp.bladeNavigationService',
+function ($compile, $templateCache, $http, objComparer, bladeNavigationService) {
 
     return {
         restrict: 'E',
         require: 'ngModel',
         replace: true,
         transclude: true,
-        templateUrl: '$(Platform)/Scripts/common/directives/genericValueInput.tpl.html',
         scope: {
             languages: "=",
             getDictionaryValues: "&"
@@ -22,8 +22,9 @@
 
             scope.$watch('context.currentPropValues', function (newValue, oldValue) {
                 //reflect only real changes
-                if (!objComparer.equal(newValue, [theEmptyValue]) &&
-                   (newValue.length != scope.currentEntity.values.length || !objComparer.equal(newValue, scope.currentEntity.values))) {
+                if (newValue !== oldValue &&
+                        !objComparer.equal(newValue, [theEmptyValue]) &&
+                        (newValue.length != scope.currentEntity.values.length || !objComparer.equal(newValue, scope.currentEntity.values))) {
                     if (scope.currentEntity.isDictionary) {
                         scope.currentEntity.values = _.map(newValue, function (x) { return { value: x } });
                     }
@@ -52,9 +53,11 @@
             ngModelController.$render = function () {
                 scope.currentEntity = ngModelController.$modelValue;
 
-                scope.context.currentPropValues = angular.copy(scope.currentEntity.values);
-                if (needAddEmptyValue(scope.currentEntity, scope.context.currentPropValues)) {
-                    scope.context.currentPropValues.push(angular.copy(theEmptyValue));
+                if (!scope.currentEntity.ngBindingModel) {
+                    scope.context.currentPropValues = angular.copy(scope.currentEntity.values);
+                    if (needAddEmptyValue(scope.currentEntity, scope.context.currentPropValues)) {
+                        scope.context.currentPropValues.push(angular.copy(theEmptyValue));
+                    }
                 }
 
                 if (scope.currentEntity.isDictionary) {
@@ -73,16 +76,6 @@
                     }
                 }
                 changeValueTemplate();
-            };
-
-            var difference = function (one, two) {
-                var containsEquals = function (obj, target) {
-                    if (obj == null) return false;
-                    return _.any(obj, function (value) {
-                        return value.value == target.value || angular.equals(value.values, target.values);
-                    });
-                };
-                return _.filter(one, function (value) { return !containsEquals(two, value); });
             };
 
             function needAddEmptyValue(property, values) {
@@ -118,7 +111,15 @@
             }
 
             function getTemplateName(property) {
-                var result = 'd' + property.valueType;
+                var result;
+                switch (property.valueType) {
+                    case 'Html':
+                    case 'Json':
+                        result = 'dCode';
+                        break;
+                    default:
+                        result = 'd' + property.valueType;
+                }
 
                 if (property.isDictionary) {
                     result += '-dictionary';
@@ -134,48 +135,60 @@
             };
 
             function changeValueTemplate() {
-                if (scope.currentEntity.valueType === 'Html') {
+                if (scope.currentEntity.valueType === 'Html' || scope.currentEntity.valueType === 'Json') {
                     // Codemirror configuration
                     scope.editorOptions = {
                         lineWrapping: true,
                         lineNumbers: true,
-                        parserfile: "liquid.js",
                         extraKeys: { "Ctrl-Q": function (cm) { cm.foldCode(cm.getCursor()); } },
                         foldGutter: true,
                         gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
                         onLoad: function (_editor) {
                             codemirrorEditor = _editor;
                         },
-                        mode: 'htmlmixed'
-                        // mode: getEditorMode()
                     };
+                }
+                if (scope.currentEntity.valueType === 'Html') {
+                    scope.editorOptions['parserfile'] = 'liquid.js';
+                    scope.editorOptions['mode'] = 'htmlmixed';
+                }
+                if (scope.currentEntity.valueType === 'Json') {
+                    scope.editorOptions['parserfile'] = 'javascript.js';
+                    scope.editorOptions['mode'] = { name: 'javascript', json: true };
                 }
 
                 var templateName = getTemplateName(scope.currentEntity);
+
                 //load input template and display
                 $http.get(templateName, { cache: $templateCache }).then(function (results) {
-			            //Need to add ngForm to isolate form validation into sub form
-			            //var innerContainer = "<div id='innerContainer' />";
+                    //Need to add ngForm to isolate form validation into sub form
+                    //var innerContainer = "<div id='innerContainer' />";
 
-			            //We must destroy scope of elements we are removing from DOM to avoid angular firing events
-			            var el = element.find('#valuePlaceHolder #innerContainer');
-			            if (el.length > 0) {
-			                el.scope().$destroy();
-			            }
-			            var container = element.find('#valuePlaceHolder');
-			            var result = container.html(results.data.trim());
+                    //We must destroy scope of elements we are removing from DOM to avoid angular firing events
+                    var el = element.find('#valuePlaceHolder #innerContainer');
+                    if (el.length > 0) {
+                        el.scope().$destroy();
+                    }
+                    var container = angular.element("<div><div id='valuePlaceHolder'></div></div>");
+                    element.append(container);
 
-			            //Create new scope, otherwise we would destroy our directive scope
-			            var newScope = scope.$new();
-			            $compile(result)(newScope);
-			        });
+                    container = element.find('#valuePlaceHolder');
+                    var result = container.html(results.data.trim());
+
+                    if (scope.currentEntity.ngBindingModel) {
+                        $(result).find('[ng-model]').attr("ng-model", 'currentEntity.blade.currentEntity.' + scope.currentEntity.ngBindingModel);
+                    }
+
+                    //Create new scope, otherwise we would destroy our directive scope
+                    var newScope = scope.$new();
+                    $compile(result)(newScope);
+                });
             };
 
             /* Datepicker */
             scope.datepickers = {
                 DateTime: false
             }
-            scope.today = new Date();
 
             scope.open = function ($event, which) {
                 $event.preventDefault();
@@ -184,16 +197,47 @@
                 scope.datepickers[which] = true;
             };
 
-            scope.dateOptions = {
-                formatYear: 'yyyy',
-            };
-
-            scope.formats = ['shortDate', 'dd-MMMM-yyyy', 'yyyy/MM/dd'];
-            scope.format = scope.formats[0];
-
             linker(function (clone) {
                 element.append(clone);
             });
+
+            /* Image */
+            var originalBlade;
+            scope.uploadImage = function() {
+                var newBlade = {
+                    id: "imageUpload",
+                    currentEntityId: 'images',
+                    title: 'platform.blades.asset-upload.title',
+                    subtitle: scope.currentEntity.name,
+                    controller: 'platformWebApp.assets.assetUploadController',
+                    template: '$(Platform)/Scripts/app/assets/blades/asset-upload.tpl.html',
+                    fileUploadOptions: {
+                        singleFileMode: true,
+                        accept: "image/*",
+                        suppressParentRefresh: true
+                    }
+                };
+                newBlade.onUploadComplete = function(data) {
+                    if (data && data.length) {
+                        scope.context.currentPropValues[0].value = data[0].url;
+                        bladeNavigationService.closeBlade(newBlade);
+                    }
+                }
+
+                //saving orig blade reference (that is not imageUpload blade) for subsequent showBlade calls
+                if (!originalBlade) {
+                    originalBlade = bladeNavigationService.currentBlade.id !== "imageUpload" ? bladeNavigationService.currentBlade : bladeNavigationService.currentBlade.parentBlade;
+                }
+                bladeNavigationService.showBlade(newBlade, originalBlade);
+            }
+
+            scope.clearImage = function () {
+                scope.context.currentPropValues[0].value = undefined;
+            }
+
+            scope.openUrl = function (url) {
+                window.open(url, '_blank');
+            }
         }
     }
 }]);

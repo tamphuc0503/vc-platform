@@ -8,6 +8,10 @@ namespace VirtoCommerce.Platform.Core.DynamicProperties
     public class DynamicProperty : AuditableEntity
     {
         public string Name { get; set; }
+        /// <summary>
+        /// dynamic property description
+        /// </summary>
+        public string Description { get; set; }
         public string ObjectType { get; set; }
         /// <summary>
         /// Defines whether a property supports multiple values.
@@ -22,6 +26,7 @@ namespace VirtoCommerce.Platform.Core.DynamicProperties
         /// </summary>
         public bool IsMultilingual { get; set; }
         public bool IsRequired { get; set; }
+        public int? DisplayOrder { get; set; }
 
         [JsonConverter(typeof(StringEnumConverter))]
         public DynamicPropertyValueType ValueType { get; set; }
@@ -46,11 +51,13 @@ namespace VirtoCommerce.Platform.Core.DynamicProperties
                 CreatedBy = CreatedBy,
                 ModifiedBy = ModifiedBy,
                 Name = Name,
+                Description = Description,
                 ObjectType = ObjectType,
                 IsArray = IsArray,
                 IsDictionary = IsDictionary,
                 IsMultilingual = IsMultilingual,
                 IsRequired = IsRequired,
+                DisplayOrder = DisplayOrder,
                 ValueType = ValueType,
                 DisplayNames = DisplayNames == null ? null : DisplayNames.Select(n => n.Clone()).ToArray(),
             };

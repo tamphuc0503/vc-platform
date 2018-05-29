@@ -1,6 +1,6 @@
 ﻿angular.module('platformWebApp')
-.controller('platformWebApp.settingGroupListController', ['$injector', '$scope', 'platformWebApp.settings', 'platformWebApp.bladeNavigationService',
-function ($injector, $scope, settings, bladeNavigationService) {
+.controller('platformWebApp.settingGroupListController', ['$window', 'platformWebApp.modules', '$scope', 'platformWebApp.settings', 'platformWebApp.bladeNavigationService', 'platformWebApp.dialogService',
+function ($window, modules, $scope, settings, bladeNavigationService, dialogService) {
     var settingsTree;
     var blade = $scope.blade;
 
@@ -120,6 +120,32 @@ function ($injector, $scope, settings, bladeNavigationService) {
             setBreadcrumbs({ groupName: null });
         }
     });
+
+    blade.toolbarCommands = [
+          {
+              name: "platform.commands.restart", icon: 'fa fa-bolt',
+              executeMethod: function () { restart(); },
+              canExecuteMethod: function () { return !blade.isLoading; },
+              permission: 'platform:module:manage'
+          }
+    ];
+
+    function restart() {
+        var dialog = {
+            id: "confirmRestart",
+            title: "platform.dialogs.app-restart.title",
+            message: "platform.dialogs.app-restart.message",
+            callback: function (confirm) {
+                if (confirm) {
+                    blade.isLoading = true;
+                    modules.restart(function () {
+                        $window.location.reload();
+                    });
+                }
+            }
+        }
+        dialogService.showConfirmationDialog(dialog);
+    }
 
     // actions on load
     blade.refresh();

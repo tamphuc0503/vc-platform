@@ -28,7 +28,7 @@
         		}
         		$scope.sampleDataInfos = {};
         		//thats need when state direct open by url or push notification
-        		var step = setupWizard.findStep($state.current.name);
+                var step = setupWizard.findStepByState($state.current.name);
 
         		$scope.close = function () {
         			setupWizard.showStep(step.nextStep);
@@ -55,8 +55,8 @@
         					else
         					{
         						setupWizard.showStep(step.nextStep);
-        					}
-        				});
+                            }
+                        }, function (error) { setupWizard.showStep(step.nextStep); });
         			}
         			else
         			{
@@ -105,7 +105,7 @@
 	   	priority: 900,
 	   	satisfy: function (notify, place) { return place == 'menu' && (notify.notifyType == 'PlatformExportPushNotification' || notify.notifyType == 'PlatformImportPushNotification'); },
 	   	template: '$(Platform)/Scripts/app/exportImport/notifications/menu.tpl.html',
-	   	action: function (notify) { $state.go('pushNotificationsHistory', notify) }
+	   	action: function (notify) { $state.go('workspace.pushNotificationsHistory', notify) }
 	   };
   	pushNotificationTemplateResolver.register(menuExportImportTemplate);
 

@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace VirtoCommerce.Platform.Core.Settings
 {
@@ -14,10 +13,9 @@ namespace VirtoCommerce.Platform.Core.Settings
             var setting = settings.FirstOrDefault(x => x.Name.Equals(settingName, StringComparison.OrdinalIgnoreCase));
             if (setting != null && setting.Value != null)
             {
-                retVal = (T)Convert.ChangeType(setting.Value, typeof(T));
+                retVal = (T)Convert.ChangeType(setting.Value, typeof(T), CultureInfo.InvariantCulture);
             }
             return retVal;
         }
-
     }
 }
